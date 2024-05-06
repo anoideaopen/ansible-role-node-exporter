@@ -1,0 +1,8 @@
+---
+- name: "setup"
+  ansible.builtin.include_tasks: setup.yml
+  when: node_exporter_purge != "yes"
+
+- name: "purge"
+  ansible.builtin.include_tasks: purge.yml
+  when: node_exporter_purge == "yes"

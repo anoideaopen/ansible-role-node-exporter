@@ -1,0 +1,79 @@
+---
+- setup:
+
+- name: "create node-exporter directory"
+  ansible.builtin.file:
+    path: "{{ node_exporter_path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: u+rwX,g+rwX,o=rX
+
+- name: "download node-exporter binary"
+  ansible.builtin.get_url:
+    url: "{{ node_exporter_url }}"
+    dest: "/tmp/node_exporter-{{ node_exporter_version }}.linux-{{ go_arch }}.tar.gz"
+    mode: '0644'
+  register: _node_exporter_download_binary
+  until: _node_exporter_download_binary is succeeded
+  retries: 5
+  delay: 2
+
+- name: "unpack node-exporter binary"
+  ansible.builtin.unarchive:
+    remote_src: true
+    src: "/tmp/node_exporter-{{ node_exporter_version }}.linux-{{ go_arch }}.tar.gz"
+    dest: "/tmp"
+    creates: "/tmp/node_exporter-{{ node_exporter_version }}.linux-{{ go_arch }}/node_exporter"
+
+- name: "propagate node-exporter binaries"
+  ansible.builtin.copy:
+    remote_src: true
+    src: "/tmp/node_exporter-{{ node_exporter_version }}.linux-{{ go_arch }}/node_exporter"
+    dest: "{{ node_exporter_path }}/node-exporter"
+    mode: 0755
+    owner: root
+    group: root
+  register: node_exporter_binary_out
+
+- name: "copy the node-exporter systemd service file"
+  ansible.builtin.template:
+    src: node_exporter.service.j2
+    dest: /etc/systemd/system/node_exporter.service
+    owner: root
+    group: root
+    mode: 0644
+  register: node_exporter_systemd_out
+
+- name: "create node-exporter config directory"
+  ansible.builtin.file:
+    path: "/etc/node-exporter"
+    state: directory
+    owner: root
+    group: root
+    mode: u+rwX,g+rwX,o=rX
+
+- name: "copy the node-exporter config file"
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: /etc/node-exporter/config.yaml
+    owner: root
+    group: root
+    mode: 0644
+  register: node_exporter_config_out
+
+- name: "ensure node-exporter is enabled on boot"
+  ansible.builtin.systemd:
+    daemon_reload: true
+    name: node_exporter
+    enabled: true
+    state: started
+
+- name: "restart node_exporter"
+  ansible.builtin.systemd:
+    daemon_reload: true
+    name: node_exporter
+    state: restarted
+  when: node_exporter_binary_out.changed or
+    node_exporter_systemd_out.changed or
+    node_exporter_config_out.changed

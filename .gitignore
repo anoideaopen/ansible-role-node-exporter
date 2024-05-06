@@ -1,0 +1,24 @@
+# MacOS stuff
+.DS_Store
+
+# Editors stuff
+*.swp
+*.swo
+*.idea
+.vscode/
+
+# Cache and temp files
+*.log
+*.retry
+.vagrant/
+.molecule
+.cache
+__pycache__/
+.pytest_cache
+.tox
+tmp
+.ash_history
+.ansible
+inventory
+vault
+.gitconfig
